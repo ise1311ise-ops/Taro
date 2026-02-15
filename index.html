@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Таро — расклад</title>
+  <style>
+    :root{
+      --bg:#0b0f1a; --card:#121a2e; --text:#e9eefc; --muted:#aab3cf;
+      --accent:#7c5cff; --border:rgba(255,255,255,.10);
+      --shadow: 0 12px 28px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(1200px 800px at 30% -10%, rgba(124,92,255,.35), transparent 60%),
+                  radial-gradient(1000px 700px at 80% 10%, rgba(0,212,255,.18), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    .wrap{max-width:960px; margin:0 auto; padding:18px}
+    .top{
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      padding:14px 14px;
+      background: rgba(255,255,255,.04);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .brand{display:flex; flex-direction:column; gap:2px}
+    .brand h1{margin:0; font-size:18px; letter-spacing:.2px}
+    .brand p{margin:0; color:var(--muted); font-size:13px}
+    .btns{display:flex; gap:10px; flex-wrap:wrap}
+    button{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius: 14px;
+      cursor:pointer;
+      transition: transform .05s ease, background .15s ease;
+      user-select:none;
+    }
+    button:active{transform: scale(.98)}
+    .primary{
+      background: linear-gradient(135deg, rgba(124,92,255,.95), rgba(124,92,255,.55));
+      border-color: rgba(124,92,255,.55);
+    }
+    .grid{
+      margin-top:16px;
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap:14px;
+    }
+    @media (max-width: 820px){ .grid{grid-template-columns:1fr} }
+    .slot{
+      background: rgba(255,255,255,.04);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      padding:14px;
+      box-shadow: var(--shadow);
+      min-height: 270px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .slot h2{
+      margin:0; font-size:14px; color:var(--muted); font-weight:600;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .card{
+      flex:1;
+      border-radius: 16px;
+      border:1px dashed rgba(255,255,255,.20);
+      background:
+        radial-gradient(600px 240px at 30% 20%, rgba(124,92,255,.25), transparent 55%),
+        rgba(0,0,0,.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:12px;
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+      cursor:pointer;
+    }
+    .card.revealed{
+      border-style: solid;
+      background: rgba(18,26,46,.9);
+    }
+    .card .hint{color:var(--muted); font-size:13px; line-height:1.35}
+    .card .name{font-size:18px; font-weight:700; margin-bottom:6px}
+    .card .sub{font-size:13px; color:var(--muted)}
+    .tag{
+      font-size:12px; color:rgba(255,255,255,.85);
+      border:1px solid rgba(255,255,255,.14);
+      padding:6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+    }
+    .foot{
+      margin-top:14px;
+      color:var(--muted);
+      font-size:12px;
+      text-align:center;
+      opacity:.9;
+    }
+    /* modal */
+    .modal{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      padding:18px;
+      background: rgba(0,0,0,.55);
+    }
+    .modal.open{display:flex}
+    .modal .box{
+      width:min(720px, 100%);
+      background: rgba(18,26,46,.96);
+      border:1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.5);
+      padding:16px 16px 12px;
+    }
+    .modal .box h3{margin:0 0 6px; font-size:18px}
+    .modal .box p{margin:0 0 10px; color:var(--muted); line-height:1.5}
+    .modal .row{display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <h1>Таро · Расклад на 3 карты</h1>
+        <p id="hello">Открой карты и посмотри трактовку.</p>
+      </div>
+      <div class="btns">
+        <button id="btnShuffle">🔮 Новый расклад</button>
+        <button id="btnSave" class="primary">💾 Сохранить</button>
+        <button id="btnHistory">📜 История</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="slot" data-pos="past">
+        <h2>Прошлое <span class="tag">1</span></h2>
+        <div class="card" id="card-past">
+          <div class="hint">Нажми, чтобы вытянуть карту</div>
+        </div>
+      </div>
+      <div class="slot" data-pos="present">
+        <h2>Настоящее <span class="tag">2</span></h2>
+        <div class="card" id="card-present">
+          <div class="hint">Нажми, чтобы вытянуть карту</div>
+        </div>
+      </div>
+      <div class="slot" data-pos="future">
+        <h2>Будущее <span class="tag">3</span></h2>
+        <div class="card" id="card-future">
+          <div class="hint">Нажми, чтобы вытянуть карту</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">Работает без сервера. Потом можно добавить колоду из 78 карт, перевёрнутые позиции, подписку, и т.д.</div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="box">
+      <h3 id="mTitle"></h3>
+      <p id="mText"></p>
+      <div class="row">
+        <button id="mClose" class="primary">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Telegram WebApp (не обязательно; если открыто вне TG — тоже работает)
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      document.documentElement.style.background = tg.themeParams?.bg_color || '';
+      const name = tg.initDataUnsafe?.user?.first_name;
+      if (name) document.getElementById('hello').textContent = `Привет, ${name}. Нажми на карты, чтобы вытянуть расклад.`;
+    }
+
+    // Мини-набор (для примера). Потом заменим на 78 карт + ключевые слова/категории/перевернутые.
+    const deck = [
+      { id: "fool", name: "Шут", text: "Новый путь, спонтанность, вера в процесс. Совет: начни и учись по дороге." },
+      { id: "magician", name: "Маг", text: "Ресурсы уже в руках. Действуй, собери фокус, прояви инициативу." },
+      { id: "high_priestess", name: "Жрица", text: "Интуиция, тайна, внутреннее знание. Совет: меньше шума — больше слушай себя." },
+      { id: "empress", name: "Императрица", text: "Рост, забота, изобилие, творчество. Питай то, что хочешь вырастить." },
+      { id: "emperor", name: "Император", text: "Структура, порядок, ответственность. Нужны границы и план." },
+      { id: "lovers", name: "Влюблённые", text: "Выбор, союз, ценности. Сверь решение со своими истинными приоритетами." },
+      { id: "chariot", name: "Колесница", text: "Движение вперёд, цель, дисциплина. Победа через контроль курса." },
+      { id: "strength", name: "Сила", text: "Внутренняя мощь, мягкая настойчивость. Сдержанность сильнее давления." },
+      { id: "hermit", name: "Отшельник", text: "Поиск смысла, пауза, мудрость. Найди свой свет и не спеши." },
+      { id: "wheel", name: "Колесо Фортуны", text: "Поворот, циклы, шанс. Будь гибким — время меняется." },
+      { id: "justice", name: "Правосудие", text: "Баланс, честность, последствия. Решай справедливо и осознанно." },
+      { id: "death", name: "Смерть", text: "Трансформация, завершение этапа. Отпусти старое — откроется новое." },
+    ];
+
+    const state = {
+      remaining: [],
+      draw: { past: null, present: null, future: null },
+    };
+
+    const els = {
+      past: document.getElementById("card-past"),
+      present: document.getElementById("card-present"),
+      future: document.getElementById("card-future"),
+      btnShuffle: document.getElementById("btnShuffle"),
+      btnSave: document.getElementById("btnSave"),
+      btnHistory: document.getElementById("btnHistory"),
+      modal: document.getElementById("modal"),
+      mTitle: document.getElementById("mTitle"),
+      mText: document.getElementById("mText"),
+      mClose: document.getElementById("mClose"),
+    };
+
+    function shuffle(arr){
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function resetReading(){
+      state.remaining = shuffle([...deck]);
+      state.draw = { past: null, present: null, future: null };
+      for (const k of ["past","present","future"]) renderCard(k);
+    }
+
+    function pickCard(){
+      if (state.remaining.length === 0) state.remaining = shuffle([...deck]);
+      return state.remaining.pop();
+    }
+
+    function renderCard(pos){
+      const el = els[pos];
+      const c = state.draw[pos];
+      el.classList.toggle("revealed", !!c);
+      el.innerHTML = c
+        ? `<div>
+             <div class="name">${c.name}</div>
+             <div class="sub">Нажми, чтобы открыть трактовку</div>
+           </div>`
+        : `<div class="hint">Нажми, чтобы вытянуть карту</div>`;
+    }
+
+    function openModal(card, pos){
+      els.mTitle.textContent = `${card.name} · ${labelPos(pos)}`;
+      els.mText.textContent = card.text;
+      els.modal.classList.add("open");
+      if (tg) tg.HapticFeedback?.impactOccurred?.("light");
+    }
+
+    function closeModal(){
+      els.modal.classList.remove("open");
+    }
+
+    function labelPos(pos){
+      return pos === "past" ? "Прошлое" : pos === "present" ? "Настоящее" : "Будущее";
+    }
+
+    function onCardClick(pos){
+      if (!state.draw[pos]) {
+        state.draw[pos] = pickCard();
+        renderCard(pos);
+        if (tg) tg.HapticFeedback?.selectionChanged?.();
+      } else {
+        openModal(state.draw[pos], pos);
+      }
+    }
+
+    function allDrawn(){
+      return state.draw.past && state.draw.present && state.draw.future;
+    }
+
+    function saveToHistory(){
+      if (!allDrawn()) {
+        alert("Сначала вытяни все 3 карты.");
+        return;
+      }
+      const item = {
+        at: new Date().toISOString(),
+        draw: state.draw,
+      };
+      const key = "tarot_history_v1";
+      const list = JSON.parse(localStorage.getItem(key) || "[]");
+      list.unshift(item);
+      localStorage.setItem(key, JSON.stringify(list.slice(0, 50)));
+      if (tg) tg.showPopup?.({ title: "Сохранено", message: "Расклад добавлен в историю.", buttons: [{type:"ok"}] });
+      else alert("Сохранено в историю.");
+    }
+
+    function showHistory(){
+      const key = "tarot_history_v1";
+      const list = JSON.parse(localStorage.getItem(key) || "[]");
+      if (!list.length) return alert("История пустая.");
+      const lines = list.slice(0, 10).map((it, idx) => {
+        const d = new Date(it.at);
+        const s = `${idx+1}) ${d.toLocaleString()} — ${it.draw.past.name} / ${it.draw.present.name} / ${it.draw.future.name}`;
+        return s;
+      }).join("\n");
+      alert(lines);
+    }
+
+    // handlers
+    els.past.addEventListener("click", () => onCardClick("past"));
+    els.present.addEventListener("click", () => onCardClick("present"));
+    els.future.addEventListener("click", () => onCardClick("future"));
+    els.btnShuffle.addEventListener("click", resetReading);
+    els.btnSave.addEventListener("click", saveToHistory);
+    els.btnHistory.addEventListener("click", showHistory);
+    els.mClose.addEventListener("click", closeModal);
+    els.modal.addEventListener("click", (e) => { if (e.target === els.modal) closeModal(); });
+
+    resetReading();
+  </script>
+
+  <!-- Telegram WebApp SDK (не обязателен, но лучше подключить для theme/expand/haptics) -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</body>
+</html>
